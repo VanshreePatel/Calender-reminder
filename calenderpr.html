@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Responsive Reminder Calendar</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    :root {
+      --accent: #0ed2f7;
+      --reminder: #ff4081;
+    }
+
+    * {
+      box-sizing: border-box;
+      padding: 0;
+      margin: 0;
+    }
+
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      background: linear-gradient(135deg, #b2fefa, var(--accent));
+    }
+
+    .calendar {
+      width: 100%;
+      max-width: 400px;
+      background: white;
+      border-radius: 20px;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+      margin: 20px;
+      overflow: hidden;
+      transition: transform 0.4s ease;
+    }
+
+    .calendar:hover {
+      transform: scale(1.01);
+    }
+
+    .calendar header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: var(--accent);
+      color: white;
+      padding: 15px 20px;
+      font-size: 1.2rem;
+    }
+
+    .calendar header button {
+      background: white;
+      border: none;
+      color: var(--accent);
+      font-weight: bold;
+      font-size: 1.2rem;
+      cursor: pointer;
+      padding: 8px 12px;
+      border-radius: 50%;
+      transition: 0.3s;
+    }
+
+    .calendar header button:hover {
+      background-color: #e0f7fa;
+      transform: scale(1.1);
+    }
+
+    .month-year {
+      font-weight: bold;
+    }
+
+    .weekdays, .days {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      text-align: center;
+      padding: 10px;
+      font-size: 0.9rem;
+    }
+
+    .weekdays div {
+      font-weight: bold;
+      color: #444;
+      padding: 5px;
+    }
+
+    .days div {
+      margin: 5px;
+      padding: 10px;
+      border-radius: 50%;
+      transition: background 0.3s, transform 0.2s;
+      position: relative;
+      font-size: 0.9rem;
+    }
+
+    .days div:hover {
+      background: #b2fefa;
+      cursor: pointer;
+      transform: scale(1.1);
+    }
+
+    .today {
+      background: var(--accent);
+      color: white;
+      font-weight: bold;
+    }
+
+    .reminder {
+      border: 2px solid var(--reminder);
+      box-shadow: 0 0 10px rgba(255, 64, 129, 0.6);
+      color: var(--reminder);
+      font-weight: bold;
+    }
+
+    .reminder:hover::after {
+      content: attr(data-note);
+      position: absolute;
+      bottom: -30px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--reminder);
+      color: white;
+      padding: 5px 10px;
+      border-radius: 10px;
+      font-size: 12px;
+      white-space: nowrap;
+      opacity: 0.9;
+    }
+
+    @media (max-width: 500px) {
+      .calendar {
+        margin: 10px;
+      }
+
+      .calendar header {
+        font-size: 1rem;
+        padding: 10px 15px;
+      }
+
+      .calendar header button {
+        font-size: 1rem;
+        padding: 6px 10px;
+      }
+
+      .weekdays, .days {
+        font-size: 0.8rem;
+        padding: 8px;
+      }
+
+      .days div {
+        padding: 8px;
+        margin: 3px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+<div class="calendar">
+  <header>
+    <button id="prev">‹</button>
+    <div class="month-year" id="monthYear"></div>
+    <button id="next">›</button>
+  </header>
+  <div class="weekdays">
+    <div>Sun</div>
+    <div>Mon</div>
+    <div>Tue</div>
+    <div>Wed</div>
+    <div>Thu</div>
+    <div>Fri</div>
+    <div>Sat</div>
+  </div>
+  <div class="days" id="days"></div>
+</div>
+
+<script>
+  const daysContainer = document.getElementById('days');
+  const monthYear = document.getElementById('monthYear');
+  const prevBtn = document.getElementById('prev');
+  const nextBtn = document.getElementById('next');
+
+  let date = new Date();
+  let reminders = JSON.parse(localStorage.getItem('reminders')) || {};
+
+  function saveReminders() {
+    localStorage.setItem('reminders', JSON.stringify(reminders));
+  }
+
+  function renderCalendar() {
+    const year = date.getFullYear();
+    const month = date.getMonth();
+    const firstDay = new Date(year, month, 1).getDay();
+    const lastDate = new Date(year, month + 1, 0).getDate();
+    const today = new Date();
+
+    daysContainer.innerHTML = '';
+    monthYear.textContent = date.toLocaleString('default', { month: 'long' }) + ' ' + year;
+
+    for (let i = 0; i < firstDay; i++) {
+      daysContainer.innerHTML += `<div></div>`;
+    }
+
+    for (let day = 1; day <= lastDate; day++) {
+      const fullDate = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+      const isToday =
+        day === today.getDate() &&
+        month === today.getMonth() &&
+        year === today.getFullYear();
+
+      const isReminder = reminders[fullDate];
+      const classList = [
+        isToday ? 'today' : '',
+        isReminder ? 'reminder' : ''
+      ].join(' ');
+
+      daysContainer.innerHTML += `<div class="${classList}" data-note="${isReminder || ''}" data-date="${fullDate}">${day}</div>`;
+    }
+
+    document.querySelectorAll('.days div[data-date]').forEach(dayEl => {
+      dayEl.addEventListener('click', () => {
+        const date = dayEl.getAttribute('data-date');
+        const current = reminders[date] || '';
+        const input = prompt('Set a reminder:', current);
+        if (input !== null) {
+          if (input.trim() === '') {
+            delete reminders[date];
+          } else {
+            reminders[date] = input.trim();
+          }
+          saveReminders();
+          renderCalendar();
+        }
+      });
+    });
+  }
+
+  prevBtn.addEventListener('click', () => {
+    date.setMonth(date.getMonth() - 1);
+    renderCalendar();
+  });
+
+  nextBtn.addEventListener('click', () => {
+    date.setMonth(date.getMonth() + 1);
+    renderCalendar();
+  });
+
+  renderCalendar();
+</script>
+
+</body>
+</html>
